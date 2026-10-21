@@ -91,7 +91,7 @@ class Bosses:
                     if shape=='circle':return pos.distance_to(p)<r+15
                     if shape=='safe':return pos.distance_to(p)>r-8
                     return segment_distance(pos,p,w['end'])<r+15
-                if hit(self.pos):self.hurt(damage)
+                self.hurt_where(hit,damage)
                 if self.objective=='defend' and hit(self.core_pos):self.hurt_core(damage*.7)
                 if shape=='line':self.effect('orbital' if not w.get('relocate') else 'cut',p,.4,end=w['end'],width=r*1.2,color=(255,106,132))
                 else:self.effect('slam',p,.6,reach=r,color=(255,123,145))

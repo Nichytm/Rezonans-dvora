@@ -89,8 +89,11 @@ class CombatArt:
             elif kind=='concert':
                 for i in range(3):pg.draw.circle(layer,(*c,90),p,int((t*150+i*90)%r)+1,3)
         self.s.blit(layer,(0,0))
-        if b.reticle is not None:
-            p=b.reticle;radius=75+int(max(0,b.reticle_time)*55)
+        reticles=[(b.reticle,b.reticle_time)]
+        if getattr(b,'coop',False):reticles.append((b.players[1]['reticle'],b.players[1]['reticle_time']))
+        for p,remaining in reticles:
+            if p is None:continue
+            radius=75+int(max(0,remaining)*55)
             pg.draw.circle(self.s,(255,195,90),p,radius,3)
             pg.draw.circle(self.s,(255,195,90),p,75,1)
             for d in (V(1,0),V(-1,0),V(0,1),V(0,-1)):pg.draw.line(self.s,WHITE,p+d*50,p+d*100,3)

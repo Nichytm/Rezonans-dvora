@@ -260,23 +260,13 @@ class Battle(ArenaBattle):
                 if e.get('poison',0)>0:
                     e['poison']-=.5;owner=e['poison_owner'];self.hit(e,self.profile.stats(owner)['atk']*.25,owner)
             self.dot_tick=False
-        self.execute_cd-=dt
-        if self.execution and self.execute_cd<=0:
-            uid=self.execution.pop(0);self.execute_cd=.23;target=next((e for e in self.enemies if e['uid']==uid),None)
-            if target:
-                start=V(self.pos);self.pos=target['pos']-V(36,0);self.clamp();self.effect('shadow_trail',start,.3,end=V(self.pos),width=9)
-                self.hit(target,self.profile.stats('hood')['atk']*7,'hood');self.effect('dagger',target['pos'],.35,direction=V(1,0),arc=160,reach=140,phase=0);self.sound('dagger')
-        if self.reticle is not None:
-            self.reticle=V(self.mouse);self.reticle_time-=dt
-            if self.reticle_time<=0:
-                pos=V(self.reticle);self.reticle=None
-                self.line_hit(pos-V(0,650),pos+V(0,650),75,self.profile.stats('glasses')['atk']*14,True,'orbital','glasses');self.shake=.45;self.sound('heavy')
+        self.update_actor_effects(dt)
         for obj in self.objects[:]:
             obj['age']+=dt;obj['life']-=dt;kind=obj['kind'];owner=obj['owner']
             if kind=='boomerang':
                 if obj['age']>.52:
                     if obj['phase']==0:obj['phase']=1;obj['hit'].clear()
-                    delta=self.pos-obj['pos']
+                    delta=self.owner_position(owner)-obj['pos']
                     if delta.length()>1:obj['vel']=delta.normalize()*710
                     if delta.length()<24:obj['life']=0
                 obj['pos']+=obj['vel']*dt
@@ -290,7 +280,7 @@ class Battle(ArenaBattle):
                     self.effect('explosion',obj['end'],.5,reach=radius,pixel=kind=='cube');self.sound('wood' if kind=='bread' else 'heavy');self.shake=.1
                     for e in self.enemies[:]:
                         if e['pos'].distance_to(obj['end'])<radius:self.hit(e,obj['damage'],owner)
-                    if kind=='bread' and self.hp.get(owner,0)>0 and self.pos.distance_to(obj['end'])<radius:self.hp[owner]=min(self.profile.stats(owner)['hp'],self.hp[owner]+10)
+                    if kind=='bread' and self.hp.get(owner,0)>0 and self.owner_position(owner).distance_to(obj['end'])<radius:self.hp[owner]=min(self.profile.stats(owner)['hp'],self.hp[owner]+10)
             elif kind=='turret':
                 obj['tick']-=dt
                 targets=[e for e in self.enemies if e['pos'].distance_to(obj['pos'])<420]
@@ -305,13 +295,11 @@ class Battle(ArenaBattle):
             if obj['life']<=0 and obj in self.objects:self.objects.remove(obj)
         for field in self.fields[:]:
             field['life']-=dt;field['tick']-=dt;kind=field['kind'];owner=field['owner'];atk=self.profile.stats(owner)['atk']
-            if kind in ('concert','orbit'):field['pos']=V(self.pos)
+            if kind in ('concert','orbit'):field['pos']=self.owner_position(owner)
             if field['tick']<=0:
                 field['tick']=.45
-                if kind=='heal' and self.pos.distance_to(field['pos'])<field['radius']:
-                    for h in self.team:
-                        if self.hp[h]>0:self.hp[h]=min(self.profile.stats(h)['hp'],self.hp[h]+self.profile.stats(h)['hp']*.025)
-                    self.effect('heal_tick',field['pos'],.45,reach=field['radius'])
+                if kind=='heal':
+                    if self.heal_area(field['pos'],field['radius'],.025):self.effect('heal_tick',field['pos'],.45,reach=field['radius'])
                 elif kind=='rain':
                     for _ in range(4):self.effect('rain_drop',field['pos']+V(random.uniform(-190,190),random.uniform(-130,130)),.4,reach=30)
                     self.dot_tick=True
@@ -319,12 +307,12 @@ class Battle(ArenaBattle):
                         if e['pos'].distance_to(field['pos'])<field['radius']:self.hit(e,atk*1.05,owner);e['slow']=1
                     self.dot_tick=False
                 elif kind=='concert':
-                    self.effect('sonic',self.pos,.45,reach=275,direction=V(1,0),arc=360,phase=0);self.sound('wave')
+                    self.effect('sonic',field['pos'],.45,reach=275,direction=V(1,0),arc=360,phase=0);self.sound('wave')
                     for e in self.enemies[:]:
-                        if e['pos'].distance_to(self.pos)<275:self.hit(e,atk*.85,owner);e['stun']=.20
+                        if e['pos'].distance_to(field['pos'])<275:self.hit(e,atk*.85,owner);e['stun']=.20
                 elif kind=='orbit':
                     for e in self.enemies[:]:
-                        if 80<e['pos'].distance_to(self.pos)<185:self.hit(e,atk*1.5,owner)
+                        if 80<e['pos'].distance_to(field['pos'])<185:self.hit(e,atk*1.5,owner)
             if field['life']<=0:
                 if kind=='fortress':
                     self.effect('slam',field['pos'],.7,reach=245)
@@ -335,3 +323,16 @@ class Battle(ArenaBattle):
             fx['life']-=dt
             if fx['life']<=0:self.fx.remove(fx)
         if len(self.fx)>150:self.fx=self.fx[-150:]
+
+    def update_actor_effects(self,dt):
+        self.execute_cd-=dt
+        if self.execution and self.execute_cd<=0:
+            uid=self.execution.pop(0);self.execute_cd=.23;target=next((e for e in self.enemies if e['uid']==uid),None)
+            if target:
+                start=V(self.pos);self.pos=target['pos']-V(36,0);self.clamp();self.effect('shadow_trail',start,.3,end=V(self.pos),width=9)
+                self.hit(target,self.profile.stats('hood')['atk']*7,'hood');self.effect('dagger',target['pos'],.35,direction=V(1,0),arc=160,reach=140,phase=0);self.sound('dagger')
+        if self.reticle is not None:
+            self.reticle=V(self.mouse);self.reticle_time-=dt
+            if self.reticle_time<=0:
+                pos=V(self.reticle);self.reticle=None
+                self.line_hit(pos-V(0,650),pos+V(0,650),75,self.profile.stats('glasses')['atk']*14,True,'orbital','glasses');self.shake=.45;self.sound('heavy')

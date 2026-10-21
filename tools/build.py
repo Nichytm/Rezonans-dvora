@@ -1,6 +1,6 @@
 """Build an optimized static bundle; leave the original desktop assets intact."""
 from pathlib import Path
-import subprocess,sys,shutil,tempfile
+import subprocess,sys,shutil,tempfile,hashlib
 ROOT=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='rezonans-build-') as temp:
     stage=Path(temp)/'game'
@@ -18,5 +18,11 @@ with tempfile.TemporaryDirectory(prefix='rezonans-build-') as temp:
 for name in ['touch.js','touch.css']:shutil.copy2(ROOT/'web'/name,ROOT/name)
 (ROOT/'media').mkdir(exist_ok=True)
 shutil.copy2(ROOT/'game/assets/video/edit3000.mp4',ROOT/'media/edit3000.mp4')
+# Changing bundle URLs prevents an older cached runtime or input script from mixing with new HTML.
+index=ROOT/'index.html';html=index.read_text()
+for name in ['game.tar.gz','touch.js','touch.css']:
+    digest=hashlib.sha256((ROOT/name).read_bytes()).hexdigest()[:12]
+    html=html.replace(name+'"',name+'?v='+digest+'"')
+index.write_text(html)
 (ROOT/'.nojekyll').touch()
 print('Static site ready at',ROOT)

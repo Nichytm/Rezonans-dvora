@@ -218,7 +218,9 @@ class Battle:
         self.floating('-'+str(round(damage)),self.pos-V(0,70),(255,115,134),True); self.sound('hit')
         if self.hp[self.hero]<=0:
             available=[i for i,h in enumerate(self.team) if self.hp[h]>0]
-            if available:
+            if getattr(self,'coop',False):
+                if not available:self.finish(False)
+            elif available:
                 self.active=available[0]; self.invulnerable=1.8
                 self.banner='В БОЙ ВСТУПАЕТ '+HEROES[self.hero]['name'].upper(); self.banner_time=1.8
             else: self.finish(False)
@@ -251,19 +253,35 @@ class Battle:
     def clamp(self):
         self.pos.x=max(BOUNDS.left,min(BOUNDS.right,self.pos.x));self.pos.y=max(BOUNDS.top,min(BOUNDS.bottom,self.pos.y))
 
-    def update(self,dt,move=(0,0),mouse=(900,400),firing=False):
-        if self.done or self.intermission:return
-        self.elapsed+=dt; self.cutin=max(0,self.cutin-dt)
-        if self.cutin>0:dt*=.3
-        self.slow_time=max(0,self.slow_time-dt)
-        if self.slow_time>0:dt*=.45
-        self.core_cooldown=max(0,self.core_cooldown-dt)
-        for key in ('attack_cd','dash_cd','invulnerable','shield','switch_cd','combo_time','banner_time','shake'):
-            setattr(self,key,max(0,getattr(self,key)-dt))
-        if self.combo_time==0:self.combo=0
+    def heal_area(self,pos,radius,fraction):
+        if self.pos.distance_to(pos)>=radius:return False
         for h in self.team:
-            self.skills[h]=max(0,self.skills[h]-dt)
-            self.energy[h]=min(100,self.energy[h]+dt*.8)
+            if self.hp[h]>0:self.hp[h]=min(self.profile.stats(h)['hp'],self.hp[h]+self.profile.stats(h)['hp']*fraction)
+        return True
+
+    def target_position(self,origin):return V(self.pos)
+
+    def owner_position(self,owner):return V(self.pos)
+
+    def hurt_where(self,predicate,damage):
+        if predicate(self.pos):self.hurt(damage);return True
+        return False
+
+    def hurt_area(self,pos,radius,damage):
+        return self.hurt_where(lambda actor:actor.distance_to(pos)<radius,damage)
+
+    def update_orb(self,orb,dt):
+        orb['life']-=dt;d=self.pos-orb['pos']
+        if 1<d.length()<130:orb['pos']+=d.normalize()*260*dt
+        if d.length()<28:
+            amount=round(self.profile.stats(self.hero)['hp']*.12)
+            self.hp[self.hero]=min(self.profile.stats(self.hero)['hp'],self.hp[self.hero]+amount)
+            self.floating('+'+str(amount),self.pos-V(0,65),(137,245,190));orb['life']=0;self.sound('pickup')
+        if orb['life']<=0:self.orbs.remove(orb)
+
+    def advance_actor(self,dt,move,mouse,firing):
+        for key in ('attack_cd','dash_cd','invulnerable','shield','switch_cd'):
+            setattr(self,key,max(0,getattr(self,key)-dt))
         motion=V(move)
         if motion.length_squared()>0:
             motion=motion.normalize(); self.move=motion
@@ -274,6 +292,21 @@ class Battle:
         direction=V(mouse)-self.pos
         if direction.length_squared()>2:self.aim=direction.normalize()
         if firing:self.attack(mouse)
+
+    def update(self,dt,move=(0,0),mouse=(900,400),firing=False):
+        if self.done or self.intermission:return
+        self.elapsed+=dt; self.cutin=max(0,self.cutin-dt)
+        if self.cutin>0:dt*=.3
+        self.slow_time=max(0,self.slow_time-dt)
+        if self.slow_time>0:dt*=.45
+        self.core_cooldown=max(0,self.core_cooldown-dt)
+        for key in ('combo_time','banner_time','shake'):
+            setattr(self,key,max(0,getattr(self,key)-dt))
+        if self.combo_time==0:self.combo=0
+        for h in self.team:
+            self.skills[h]=max(0,self.skills[h]-dt)
+            self.energy[h]=min(100,self.energy[h]+dt*.8)
+        self.advance_actor(dt,move,mouse,firing)
         if getattr(self,'allow_waves',True) and not self.enemies and self.spawn_queue==0:
             self.next_wave-=dt
             if self.next_wave<=0:
@@ -293,7 +326,7 @@ class Battle:
                 self.update_boss(e,dt);continue
             e['flash']=max(0,e['flash']-dt);e['stun']=max(0,e['stun']-dt);e['slow']=max(0,e['slow']-dt)
             if e['stun']>0:continue
-            target=self.core_pos if self.objective=='defend' and e['uid']%3==0 else self.pos
+            target=self.core_pos if self.objective=='defend' and e['uid']%3==0 else self.target_position(e['pos'])
             delta=target-e['pos'];dist=delta.length();direction=delta.normalize() if dist>0 else V(1,0)
             speed=e['speed']*(.55 if e['slow']>0 else 1)
             e['cooldown']-=dt
@@ -302,7 +335,7 @@ class Battle:
                 if e['telegraph']<=0:
                     if e['kind']=='boss':
                         self.ring(e['target'],105,e['color'])
-                        if self.pos.distance_to(e['target'])<105:self.hurt(42+self.stage*7)
+                        self.hurt_area(e['target'],105,42+self.stage*7)
                         if self.core_pos.distance_to(e['target'])<105:self.hurt_core(35+self.stage*5)
                         for angle in range(0,360,24 if e['enraged'] else 40):self.shoot(e['pos'],V(1,0).rotate(angle+e['attack_number']*13),18+self.stage*4,190 if e['enraged'] else 160,e['color'],True,9)
                         if self.stage%3==0:self.add_zone(e['target'],90,4,14+self.stage*2,e['color'],True)
@@ -310,7 +343,7 @@ class Battle:
                         rush=e['target']-e['pos']
                         if rush.length()>0:e['pos']+=rush.normalize()*min(170,rush.length())
                         self.ring(e['pos'],50,e['color'])
-                        if self.pos.distance_to(e['pos'])<65:self.hurt(20+self.stage*4)
+                        self.hurt_area(e['pos'],65,20+self.stage*4)
                         if self.core_pos.distance_to(e['pos'])<65:self.hurt_core(20+self.stage*4)
                 continue
             kind=e['kind']
@@ -335,7 +368,7 @@ class Battle:
                 if dist>e['r']+22:e['pos']+=direction*speed*dt
                 if kind in ('boss','charger') and e['cooldown']<=0:
                     e['telegraph']=.85 if kind=='boss' and e['enraged'] else 1.05 if kind=='boss' else .7;e['target']=V(target);e['cooldown']=2.8 if e['enraged'] else 3.8 if kind=='boss' else 3;e['attack_number']+=1
-                if self.pos.distance_to(e['pos'])<e['r']+23:self.hurt((20 if kind=='boss' else 10)+self.stage*3)
+                self.hurt_area(e['pos'],e['r']+23,(20 if kind=='boss' else 10)+self.stage*3)
                 if self.core_pos.distance_to(e['pos'])<e['r']+24:self.hurt_core((15 if kind=='boss' else 8)+self.stage*2)
             e['pos'].x=max(45,min(1235,e['pos'].x));e['pos'].y=max(185,min(585,e['pos'].y))
         for bullet in self.bullets[:]:
@@ -343,8 +376,8 @@ class Battle:
             if hasattr(self,'projectile_blocked') and self.projectile_blocked(bullet):
                 self.bullets.remove(bullet);continue
             if bullet['enemy']:
-                if bullet['pos'].distance_to(self.pos)<bullet['size']+23:
-                    self.hurt(bullet['damage']);bullet['life']=0
+                if self.hurt_area(bullet['pos'],bullet['size']+23,bullet['damage']):
+                    bullet['life']=0
                 elif self.objective=='defend' and bullet['pos'].distance_to(self.core_pos)<bullet['size']+28:
                     self.hurt_core(bullet['damage']);bullet['life']=0
             else:
@@ -353,21 +386,14 @@ class Battle:
                         bullet['hit'].add(e['uid']);self.hit(e,bullet['damage'],bullet['owner']);bullet['pierce']-=1
                         if bullet['pierce']<0:bullet['life']=0;break
             if bullet['life']<=0:self.bullets.remove(bullet)
-        for orb in self.orbs[:]:
-            orb['life']-=dt;d=self.pos-orb['pos']
-            if 1<d.length()<130:orb['pos']+=d.normalize()*260*dt
-            if d.length()<28:
-                amount=round(self.profile.stats(self.hero)['hp']*.12)
-                self.hp[self.hero]=min(self.profile.stats(self.hero)['hp'],self.hp[self.hero]+amount)
-                self.floating('+'+str(amount),self.pos-V(0,65),(137,245,190));orb['life']=0;self.sound('pickup')
-            if orb['life']<=0:self.orbs.remove(orb)
+        for orb in self.orbs[:]:self.update_orb(orb,dt)
         self.zone_tick-=dt;tick=self.zone_tick<=0
         if tick:self.zone_tick=.5
         for zone in self.zones[:]:
             zone['life']-=dt
             if tick:
                 if zone['enemy']:
-                    if self.pos.distance_to(zone['pos'])<zone['radius']:self.hurt(zone['damage'])
+                    self.hurt_area(zone['pos'],zone['radius'],zone['damage'])
                     if self.core_pos.distance_to(zone['pos'])<zone['radius']:self.hurt_core(zone['damage'])
                 else:
                     for e in self.enemies[:]:

@@ -1,5 +1,6 @@
 """Drawing helpers. All coordinates use a fixed 1280x720 logical canvas."""
 import math
+from contextlib import nullcontext
 from functools import lru_cache
 from pathlib import Path
 import pygame as pg
@@ -200,15 +201,18 @@ class UI(CombatArt,WorldArt,ThreatArt,ObjectiveArt):
         for orb in b.orbs:
             x,y=orb['pos'];self.glow((x,y),CYAN,25,50)
             pg.draw.circle(s,CYAN,(int(x),int(y)),7);pg.draw.line(s,BG,(x-3,y),(x+3,y),2);pg.draw.line(s,BG,(x,y-3),(x,y+3),2)
-        entities=[(e['pos'].y,'enemy',e) for e in b.enemies]+[(b.pos.y,'hero',None)]
+        players=[(b.player_position(i).y,'hero',i) for i in range(2)] if getattr(b,'coop',False) else [(b.pos.y,'hero',None)]
+        entities=[(e['pos'].y,'enemy',e) for e in b.enemies]+players
         for _,kind,e in sorted(entities,key=lambda a:a[0]):
             if kind=='hero':
-                x,y=b.pos;col=HEROES[b.hero]['color'];r=26
-                pg.draw.ellipse(s,(8,11,22),(x-34,y+10,68,19));pg.draw.ellipse(s,col,(x-30,y+5,60,20),2)
-                if not(b.invulnerable>0 and int(t*16)%2):self.draw_hero(b,t)
-                if b.shield>0:pg.draw.ellipse(s,CYAN,(x-49,y-95,98,125),3)
-                aim=b.pos+b.aim*57;pg.draw.circle(s,col,(int(aim.x),int(aim.y)),5,1)
-                self.bar((x-28,y-105,56,5),b.hp[b.hero],b.profile.stats(b.hero)['hp'],CYAN)
+                with b.player(e) if getattr(b,'coop',False) else nullcontext():
+                    x,y=b.pos;col=HEROES[b.hero]['color'];r=26
+                    pg.draw.ellipse(s,(8,11,22),(x-34,y+10,68,19));pg.draw.ellipse(s,col,(x-30,y+5,60,20),2)
+                    if not(b.invulnerable>0 and int(t*16)%2):self.draw_hero(b,t)
+                    if b.shield>0:pg.draw.ellipse(s,CYAN,(x-49,y-95,98,125),3)
+                    aim=b.pos+b.aim*57;pg.draw.circle(s,col,(int(aim.x),int(aim.y)),5,1)
+                    self.bar((x-28,y-105,56,5),b.hp[b.hero],b.profile.stats(b.hero)['hp'],CYAN)
+                    if getattr(b,'coop',False):self.text(f'ИГРОК {e+1}'+(' · ВЫБЫЛ' if b.hp[b.hero]<=0 else ''),x,y-121,13,CYAN if e==0 else GOLD,True,'center')
             else:
                 x,y=e['pos'];r=e['r'];col=(255,255,255) if e['flash'] else e['color']
                 pg.draw.ellipse(s,(8,11,22),(x-r,y+9,r*2,16))
@@ -279,12 +283,12 @@ class UI(CombatArt,WorldArt,ThreatArt,ObjectiveArt):
         for text in b.texts:self.text(text['text'],text['pos'].x,text['pos'].y,25 if text['big'] else 17,text['color'],True,'center')
         self.panel((24,20,322,71),(16,22,38),LINE,12)
         self.text(('АРЕНА  /  ВОЛНА '+str(max(1,b.wave))) if b.endless else f'РАЗЛОМ {b.stage:02}  /  ВОЛНА {min(3,max(1,b.wave))} ИЗ 3',42,33,12,CYAN,True)
-        self.text('Испытание героев' if b.training else 'Бесконечная арена' if b.endless else STAGES[b.stage-1][0],42,53,20,WHITE,True)
+        self.text('Совместная арена' if getattr(b,'coop',False) else 'Испытание героев' if b.training else 'Бесконечная арена' if b.endless else STAGES[b.stage-1][0],42,53,20,WHITE,True)
         task='Защити резонатор: '+str(int(100*b.core_hp/b.core_max))+'%' if b.objective=='defend' else f'Якоря разлома: {b.anchors_destroyed} / 3' if b.objective=='anchors' else 'Зачисти все волны'
         self.text(('Урон: '+str(int(b.total_damage))) if b.training else task,30,101,13,CYAN,True)
         if b.perks:self.text(f'Усилений: {len(b.perks)}  ·  Урон ×{b.power:.2f}',30,124,12,MUTED)
         self.text(f'{int(b.elapsed)//60:02}:{int(b.elapsed)%60:02}',1238,27,24,WHITE,True,'topright')
-        self.text('ESC · ПАУЗА',1238,63,12,MUTED,False,'topright')
+        self.text('ПАУЗА НА ПАНЕЛИ' if getattr(b,'board_mode',False) else 'ESC · ПАУЗА',1238,63,12,MUTED,False,'topright')
         bosses=[e for e in b.enemies if e['kind']=='boss']
         if bosses:
             boss=bosses[0];self.text(b.boss_name+(' · ЯРОСТЬ' if boss['enraged'] else ''),640,24,14,RED,True,'midtop');self.bar((425,49,430,9),boss['hp'],boss['maxhp'],RED)
@@ -301,28 +305,36 @@ class UI(CombatArt,WorldArt,ThreatArt,ObjectiveArt):
             self.bar((x+60,676,102,4),b.energy[h],100,GOLD)
             if b.hp[h]<=0:self.text('ВЫБЫЛ',x+60,681,10,RED,True)
             self.buttons.append((pg.Rect(x,630,174,69),lambda slot=i:b.switch(slot)))
-        h=HEROES[b.hero]
-        self.text('ЛКМ · '+BASICS[h['style']],580,626,11,CYAN,True,maxwidth=203)
-        self.text('WASD · ДВИЖЕНИЕ',600,652,12,MUTED)
-        self.text('СМЕНА: '+(f'{b.switch_cd:.1f}с' if b.switch_cd>0 else '1 / 2 / 3'),600,674,12,MUTED)
-        if h['style']=='shot':
-            self.text(f'R · {b.reloads[b.hero]:.1f}с' if b.reloads[b.hero]>0 else f'ПАТРОНЫ  {b.ammo[b.hero]} / 6 · R',600,692,11,GOLD,True)
-        if b.stances.get(b.hero,0)>0:self.text(f'{HEROES[b.hero]["ultimate"]} · {b.stances[b.hero]:.1f}с',640,578,20,GOLD,True,'center')
-        if b.feedback_time>0:self.text(b.feedback,640,171,17,GOLD,True,'center')
-        if b.training:
-            self.button((220,630,150,34),'← ГЕРОЙ',lambda:b.training_cycle(-1),small=True)
-            self.button((380,630,150,34),'ГЕРОЙ →',lambda:b.training_cycle(1),small=True)
-            self.text('ВСЕ 11 · БЕЗ ЗАТРАТ',228,678,12,MUTED)
-        for x,key,label,cooldown,ready,action in [
-            (794,'SPACE','Рывок',b.dash_cd,b.dash_cd<=0,b.dash),
-            (948,'Q',h['skill'],b.skills[b.hero],b.skills[b.hero]<=0,b.skill),
-            (1102,'E','Ультимейт',100-b.energy[b.hero],b.energy[b.hero]>=100,b.ultimate)]:
-            self.panel((x,630,138,68),(26,39,52) if ready else (21,26,41),CYAN if ready else LINE,10)
-            self.text(key,x+12,637,14,CYAN if ready else MUTED,True)
-            status='ГОТОВО' if ready else f'{b.energy[b.hero]:.0f}%' if key=='E' else f'{cooldown:.1f}с'
-            self.text(status,x+126,640,12,GOLD if key=='E' else WHITE,True,'topright')
-            self.text(label,x+12,671,12,WHITE,maxwidth=115)
-            if ready:self.buttons.append((pg.Rect(x,630,138,68),action))
+        if getattr(b,'coop',False):
+            for index,h in enumerate(b.team):
+                x=640+index*302;col=CYAN if index==0 else GOLD
+                self.panel((x,630,284,69),(19,26,42),col,10)
+                self.text(f'ИГРОК {index+1} · '+HEROES[h]['name'],x+12,637,14,col,True)
+                skill='Приём готов' if b.skills[h]<=0 else f'Приём: {b.skills[h]:.1f}с'
+                self.text(skill+f' · Ульта: {round(b.energy[h])}%',x+12,670,13,WHITE)
+        else:
+            h=HEROES[b.hero]
+            self.text('АВТОПРИЦЕЛ И АТАКА' if getattr(b,'board_mode',False) else 'ЛКМ · '+BASICS[h['style']],580,626,11,CYAN,True,maxwidth=203)
+            self.text('СТИК · ДВИЖЕНИЕ' if getattr(b,'board_mode',False) else 'WASD · ДВИЖЕНИЕ',600,652,12,MUTED)
+            self.text('КНОПКИ НИЖЕ' if getattr(b,'board_mode',False) else 'СМЕНА: '+(f'{b.switch_cd:.1f}с' if b.switch_cd>0 else '1 / 2 / 3'),600,674,12,MUTED)
+            if h['style']=='shot':
+                self.text(f'R · {b.reloads[b.hero]:.1f}с' if b.reloads[b.hero]>0 else f'ПАТРОНЫ  {b.ammo[b.hero]} / 6 · R',600,692,11,GOLD,True)
+            if b.stances.get(b.hero,0)>0:self.text(f'{HEROES[b.hero]["ultimate"]} · {b.stances[b.hero]:.1f}с',640,578,20,GOLD,True,'center')
+            if b.feedback_time>0:self.text(b.feedback,640,171,17,GOLD,True,'center')
+            if b.training:
+                self.button((220,630,150,34),'← ГЕРОЙ',lambda:b.training_cycle(-1),small=True)
+                self.button((380,630,150,34),'ГЕРОЙ →',lambda:b.training_cycle(1),small=True)
+                self.text('ВСЕ 11 · БЕЗ ЗАТРАТ',228,678,12,MUTED)
+            for x,key,label,cooldown,ready,action in [
+                (794,'SPACE','Рывок',b.dash_cd,b.dash_cd<=0,b.dash),
+                (948,'Q',h['skill'],b.skills[b.hero],b.skills[b.hero]<=0,b.skill),
+                (1102,'E','Ультимейт',100-b.energy[b.hero],b.energy[b.hero]>=100,b.ultimate)]:
+                self.panel((x,630,138,68),(26,39,52) if ready else (21,26,41),CYAN if ready else LINE,10)
+                self.text(key,x+12,637,14,CYAN if ready else MUTED,True)
+                status='ГОТОВО' if ready else f'{b.energy[b.hero]:.0f}%' if key=='E' else f'{cooldown:.1f}с'
+                self.text(status,x+126,640,12,GOLD if key=='E' else WHITE,True,'topright')
+                self.text(label,x+12,671,12,WHITE,maxwidth=115)
+                if ready:self.buttons.append((pg.Rect(x,630,138,68),action))
         self.draw_mode_hud(b)
         if b.cutin>0:
             self.panel((0,212,790,137),(26,20,46),PURPLE,0)

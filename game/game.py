@@ -71,6 +71,10 @@ class Game(Activities,Extras):
         self.stage=stage;self.battle=Battle(self.profile,stage,self.sound.play,endless,training);self.edit_checked=False;self.page='battle';self.modal=None
         self.paused=False;self.pressed.clear();self.sound.music('battle')
 
+    def start_coop(self,heroes):
+        from coop import start_coop
+        start_coop(self,heroes)
+
     def claim(self,key):
         if self.profile.claim_contract(key):self.sound.play('rare');self.message('Контракт выполнен. Награда получена!')
 
@@ -278,17 +282,24 @@ class Game(Activities,Extras):
             self.overlay();u.panel((350,119,580,501))
             u.text('ЗАДАЧА ВЫПОЛНЕНА' if b.mode and b.won else 'ПОПЫТКА ЗАВЕРШЕНА' if b.mode else 'ЗАБЕГ ЗАВЕРШЁН' if b.endless else 'РАЗЛОМ ЗАКРЫТ' if b.won else 'РАЗЛОМ ПОБЕДИЛ',640,151,34,CYAN if b.won else RED,True,'midtop')
             summary=f'Пройдено волн: {b.completed_waves}' if b.endless else f'Рейтинг: {b.stars} / 3  ·  '+('Отличная работа!' if b.won else 'Усиль отряд и попробуй ещё.')
+            if getattr(b,'coop',False):summary='СОВМЕСТНАЯ АРЕНА · '+('Вместе победили!' if b.won else 'Попробуйте ещё раз')
             if b.mode:summary=MODES[b.mode]['name']+' · '+('Задача выполнена!' if b.won else 'Попробуй другую тактику.')
             u.text(summary,640,207,17,MUTED,False,'midtop')
             u.text(f'{b.kills} монстров  ·  {int(b.elapsed)//60}:{int(b.elapsed)%60:02} в бою',640,247,16,WHITE,False,'midtop')
-            result=b.result
-            for i,(key,title,col) in enumerate([('crystals','КРИСТАЛЛЫ',CYAN),('gold','МОНЕТЫ',GOLD),('essence','ЭССЕНЦИЯ',PURPLE)]):
-                x=386+i*174;u.panel((x,292,160,87));u.text('+'+str(result[key]),x+80,304,29,col,True,'midtop');u.text(title,x+80,351,11,MUTED,True,'midtop')
-            u.text(f'+{result["xp"]} опыта каждому герою отряда',640,399,17,WHITE,False,'midtop')
-            if result['first']:u.text('БОНУС ПЕРВОГО ПРОХОЖДЕНИЯ ПОЛУЧЕН',640,432,12,GOLD,True,'midtop')
-            if result['levels']:u.text('Уровень повышен: '+', '.join(HEROES[h]['name'] for h in result['levels']),640,457,13,CYAN,False,'midtop',maxwidth=490)
+            if getattr(b,'coop',False):
+                for index,h in enumerate(b.team):
+                    x=405+index*246;u.img('hero_'+h,(x,292,220,110))
+                    u.text(f'ИГРОК {index+1} · '+HEROES[h]['name'],x+110,425,16,CYAN if index==0 else GOLD,True,'center')
+                    u.text('В СТРОЮ' if b.hp[h]>0 else 'ВЫБЫЛ',x+110,456,14,MUTED,False,'center')
+            else:
+                result=b.result
+                for i,(key,title,col) in enumerate([('crystals','КРИСТАЛЛЫ',CYAN),('gold','МОНЕТЫ',GOLD),('essence','ЭССЕНЦИЯ',PURPLE)]):
+                    x=386+i*174;u.panel((x,292,160,87));u.text('+'+str(result[key]),x+80,304,29,col,True,'midtop');u.text(title,x+80,351,11,MUTED,True,'midtop')
+                u.text(f'+{result["xp"]} опыта каждому герою отряда',640,399,17,WHITE,False,'midtop')
+                if result['first']:u.text('БОНУС ПЕРВОГО ПРОХОЖДЕНИЯ ПОЛУЧЕН',640,432,12,GOLD,True,'midtop')
+                if result['levels']:u.text('Уровень повышен: '+', '.join(HEROES[h]['name'] for h in result['levels']),640,457,13,CYAN,False,'midtop',maxwidth=490)
             u.button((389,508,501,47),'В ШТАБ РАЗЛОМОВ',self.leave_battle,True)
-            u.button((389,566,501,34),'ПОВТОРИТЬ БОЙ',lambda:self.start_activity(b.mode,b.map_key,b.boss_choice,b.difficulty) if b.mode else self.start_battle(b.stage,b.endless),small=True)
+            u.button((389,566,501,34),'ПОВТОРИТЬ БОЙ',lambda:self.start_coop(b.team) if getattr(b,'coop',False) else self.start_activity(b.mode,b.map_key,b.boss_choice,b.difficulty) if b.mode else self.start_battle(b.stage,b.endless),small=True)
         elif self.paused:
             self.overlay();u.panel((427,220,426,278));u.text('ПАУЗА',640,246,35,WHITE,True,'midtop')
             u.button((462,310,356,51),'ПРОДОЛЖИТЬ',lambda:setattr(self,'paused',False),True)
