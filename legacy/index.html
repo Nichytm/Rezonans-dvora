@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><title>Резонанс Двора — Android 6</title><link rel="icon" href="../favicon.png"><link rel="stylesheet" href="legacy.css?v=1"><script>window.onerror=function(message){var e=document.getElementById('startup');if(e){e.style.display='block';e.innerHTML='Не удалось запустить игру: '+String(message).replace(/[<>]/g,'');}return false;};</script></head>
+<body>
+<div id="startup">Открывается версия для старых досок…</div>
+<div id="menu" class="screen"><div class="menu-card"><p class="eyebrow">ВЕРСИЯ ДЛЯ СТАРЫХ ДОСОК · ANDROID 6</p><h1>РЕЗОНАНС ДВОРА</h1><p class="intro">11 героев, 6 карт. Играй один или вдвоём на одном экране.</p>
+<div class="row"><label>Игроков<select id="count"><option value="1">Один</option><option value="2">Двое</option></select></label><label>Режим<select id="mode"><option value="arena">Арена: 3 волны и босс</option></select></label><label>Карта<select id="map"></select></label></div>
+<div class="row"><label>Герой первого игрока<select id="hero1"></select></label><label id="second-choice">Герой второго игрока<select id="hero2"></select></label><label>Соперник<select id="boss"></select></label></div>
+<p id="mode-description"></p><p id="menu-error" class="warning"></p><button id="play" class="primary">ИГРАТЬ</button><button id="menu-fullscreen">Полный экран</button><button id="sound">Звук: выкл</button><p class="hint">Двигайтесь стиками внизу. Прицеливание и атака — автоматически. Каждый игрок нажимает свои способности. Для двух игроков нужен мультитач.</p><p id="record" class="hint"></p><p class="hint">Упрощённые графика и эффекты; прогресс этой версии сохраняется отдельно. <a href="../?engine=full">Открыть полную версию</a></p></div></div>
+<canvas id="game" width="1280" height="720"></canvas>
+<div id="dock" class="solo">
+<div id="panel1" class="player-panel"><div id="status1" class="player-status">ИГРОК 1</div><div class="player-body"><div id="stick1" class="stick"><div class="knob"></div><span>ДВИЖЕНИЕ</span></div><div class="actions"><button id="skill1">Приём</button><button id="ult1">Ульта</button><button id="dash1">Рывок</button></div></div></div>
+<div id="panel2" class="player-panel"><div id="status2" class="player-status">ИГРОК 2</div><div class="player-body"><div id="stick2" class="stick"><div class="knob"></div><span>ДВИЖЕНИЕ</span></div><div class="actions"><button id="skill2">Приём</button><button id="ult2">Ульта</button><button id="dash2">Рывок</button></div></div></div>
+<div class="dock-tools"><button id="pause">Пауза</button><button id="fullscreen">Полный экран</button><button id="leave">В меню</button></div></div>
+<div id="overlay" class="screen"><div class="modal-card"><h2 id="overlay-title"></h2><p id="overlay-text"></p><div id="overlay-buttons"></div></div></div>
+<script src="data.js?v=1"></script><script src="legacy.js?v=1"></script>
+</body></html>
