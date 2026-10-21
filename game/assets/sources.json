@@ -1,0 +1,35 @@
+{
+  "images": {
+    "bugdan.png": "Сюдо новые релизы/images/bugdanchik_attack.png",
+    "ilya.png": "Сюдо новые релизы/images/animatronic_attack.png",
+    "hood.png": "Сюдо новые релизы/images/ddd.png",
+    "artem.png": "Сюдо новые релизы/Art Assets/sticker.jpg",
+    "glasses.png": "Новая папка (7)/friend2.png",
+    "scream.png": "Новая папка (7)/friend1.png",
+    "smirk.png": "Новая папка (7)/friend3.png",
+    "white.png": "csgopy/csgopy/textures/player_ct.png",
+    "smiler.png": "Новая папка (6)/smiler.png",
+    "yard.png": "Сюдо новые релизы/images/camera_3.png",
+    "night.png": "Сюдо новые релизы/images/cnfh/camera_2.png",
+    "block.png": "Сюдо новые релизы/images/camera_2.png",
+    "coin.png": "Новая папка (6)/coin.png"
+  },
+  "sounds": {
+    "click.mp3": "Сюдо новые релизы/sounds/camera_switch.mp3",
+    "summon.mp3": "Сюдо новые релизы/sounds/buy_package.mp3",
+    "rare.mp3": "Сюдо новые релизы/sounds/achievement.mp3",
+    "bugdan.mp3": "Сюдо новые релизы/sounds/bugdanchik_attack.mp3",
+    "ilya.mp3": "Сюдо новые релизы/sounds/die.mp3",
+    "artem.mp3": "Сюдо новые релизы/sounds/go_gylat.mp3",
+    "scream.mp3": "Новая папка (7)/sound1.mp3",
+    "glasses.mp3": "Новая папка (7)/sound2.mp3",
+    "smirk.mp3": "Новая папка (7)/sound3.mp3",
+    "boss.wav": "Новая папка (6)/smile.wav",
+    "hit.wav": "csgopy/sounds/hit.wav",
+    "dash.wav": "csgopy/sounds/footstep.wav",
+    "win.mp3": "Сюдо новые релизы/sounds/victory.mp3",
+    "lose.mp3": "Сюдо новые релизы/sounds/lose.mp3",
+    "menu.mp3": "Сюдо новые релизы/sounds/music_box_loop.mp3",
+    "battle.mp3": "Новая папка (7)/music.mp3"
+  }
+}

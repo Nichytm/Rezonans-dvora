@@ -1,0 +1,30 @@
+{
+  "sources": {
+    "shooter": "https://kenney.nl/media/pages/assets/top-down-shooter/230204340a-1677694684/kenney_top-down-shooter.zip",
+    "tanks": "https://kenney.nl/media/pages/assets/top-down-tanks/0385fcb3e0-1677699019/kenney_top-down-tanks.zip",
+    "scifi": "https://kenney.nl/media/pages/assets/sci-fi-sounds/6b296f9ecf-1677589334/kenney_sci-fi-sounds.zip"
+  },
+  "tiles": {
+    "concrete": "86",
+    "lab": "11",
+    "ice": "12",
+    "wood": "42",
+    "crate": "129",
+    "tree": "183",
+    "rock": "237",
+    "console": "324",
+    "stall": "448",
+    "iceblock": "160"
+  },
+  "sounds": {
+    "alarm": "computerNoise_003",
+    "phase": "forceField_002",
+    "plasma": "laserSmall_000",
+    "detonate": "explosionCrunch_001",
+    "mechanical": "doorOpen_001",
+    "route": "forceField_000",
+    "capture": "computerNoise_000",
+    "deposit": "doorClose_001"
+  },
+  "license": "CC0"
+}

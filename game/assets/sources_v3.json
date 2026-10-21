@@ -1,0 +1,50 @@
+{
+  "version": "0.3",
+  "user_media": "D:\\питон проекты\\фотки",
+  "voice_sources": [
+    "D:\\питон проекты\\Сюдо новые релизы\\sounds",
+    "assets/sounds (copied legacy game assets)"
+  ],
+  "downloaded": [
+    {
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "license": "CC0"
+    },
+    {
+      "source": "https://kenney.nl/assets/rpg-audio",
+      "license": "CC0"
+    },
+    {
+      "source": "https://kenney.nl/assets/particle-pack",
+      "license": "CC0"
+    }
+  ],
+  "sfx_files": [
+    "coin.ogg",
+    "dagger.ogg",
+    "draw.ogg",
+    "heavy.ogg",
+    "metal.ogg",
+    "punch.ogg",
+    "reload.ogg",
+    "sword.ogg",
+    "throw.ogg",
+    "wood.ogg"
+  ],
+  "vfx_files": [
+    "circle_01.png",
+    "light_01.png",
+    "magic_01.png",
+    "scorch_01.png",
+    "slash_01.png",
+    "slash_02.png",
+    "slash_03.png",
+    "slash_04.png",
+    "smoke_01.png",
+    "smoke_02.png",
+    "smoke_03.png",
+    "spark_01.png",
+    "spark_02.png",
+    "trace_01.png"
+  ]
+}
