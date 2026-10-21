@@ -81,7 +81,9 @@ class CoopBattle(Battle):
             if self.hp[h]<=0:self.hp[h]=maximum*.45;self.tour_revives+=1
             else:self.hp[h]=min(maximum,self.hp[h]+maximum*(.50 if self.mode=='duel' else .25))
             self.energy[h]=max(65.,self.energy[h]);self.skills[h]=min(1.,self.skills[h])
-        self.offer_perks();self.enemies.clear();self.warnings.clear();self.objects.clear();self.fields.clear()
+        health=dict(self.hp)
+        self.offer_perks();self.hp.update(health)
+        self.enemies.clear();self.warnings.clear();self.objects.clear();self.fields.clear()
 
     def end_tour(self):
         self.tour_finished=True;self.finish(True)

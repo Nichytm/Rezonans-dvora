@@ -120,7 +120,8 @@ class CoopTests(unittest.TestCase):
         b=self.make();p2=b.team[1];b.hp[p2]=0;b.hp[b.team[0]]-=80
         b.finish(True);b.finish(True)
         self.assertEqual(b.tour_completed,1);self.assertEqual(b.tour_revives,1)
-        self.assertGreater(b.hp[p2],0);b.choose_perk('power' if 'power' in b.choices else b.choices[0])
+        self.assertAlmostEqual(b.hp[p2],b.profile.stats(p2)['hp']*.45)
+        b.choose_perk('power' if 'power' in b.choices else b.choices[0])
         self.assertEqual(b.team,['bugdan','glasses']);self.assertEqual(b.tour_completed,1)
         self.assertEqual(len(b.perks),1);self.assertFalse(b.intermission)
 
