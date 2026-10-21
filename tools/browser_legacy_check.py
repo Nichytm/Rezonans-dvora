@@ -17,7 +17,7 @@ with sync_playwright() as p:
         else:request.abort()
     page.route('**/*',route)
     page.goto(root+'/?mode=board&compat-test=2')
-    page.wait_for_url('**/legacy/index.html?board=1&v=restored-menu',timeout=15000)
+    page.wait_for_url('**/legacy/index.html?board=1&v=coop-tour',timeout=15000)
     page.wait_for_function('!!window.RDUI')
     assert page.locator('#startup').is_hidden()
     assert not any('.wasm' in u or 'main.data' in u or 'game.tar.gz' in u for u in requests),requests
@@ -70,6 +70,7 @@ with sync_playwright() as p:
     assert ev('JSON.stringify(RDSave.data)')==original
     ev('RDLegacy.menu()');show('home');tap('ВДВОЁМ');tap('НАЧАТЬ СОВМЕСТНЫЙ БОЙ')
     assert ev('RDLegacy.state().count')==2
+    assert ev('RDLegacy.state().coopTour.kind')=='campaign'
     ev('RDLegacy.state().spawnLeft=999;RDLegacy.state().spawnCD=999;')
     before=ev('RDLegacy.state().players.map(function(p){return p.x;})')
     cdp=ctx.new_cdp_session(page)
@@ -134,6 +135,49 @@ with sync_playwright() as p:
         assert ev('RDSave.data.crystals')-crystals==(900 if mode=='arena' else 600),(mode,crystals,ev('RDSave.data.crystals'))
         close_movie()
     assert ev('RDSave.data.edit_seen')>=1
+    # A complete cooperative itinerary must survive all objective transitions.
+    before_tour=ev('JSON.stringify(RDSave.data)')
+    launch(dict(mode='arena',team=['bugdan','glasses'],coop=True,coopTour='campaign',reward='none'))
+    maps=set();modes=set()
+    def finish_leg():
+        ev('''function(){var g=RDLegacy.state();g.enemies=[];g.spawnLeft=0;g.modeSpawn=999;g.time=1000;
+          g.players.forEach(function(p){p.inv=100;});
+          if(g.mode==='capture')g.beacons.forEach(function(z){z.v=100;});
+          if(g.mode==='escort')g.cart.progress=1;
+          if(g.mode==='heist'){g.deposited=9;g.escapeTime=4;g.players[1].x=1130;g.players[1].y=520;}
+          if(g.mode==='survival')g.modeTime=90;
+          RDLegacy.step(.01);RDUI.render();}''')
+    for index in range(18):
+        state=ev('({n:RDLegacy.state().coopTour.completed,map:RDLegacy.state().map,mode:RDLegacy.state().mode})')
+        assert state['n']==index;maps.add(state['map']);modes.add(state['mode'])
+        assert not ev('RDLegacy.state().done')
+        if index==17:assert ev('RDLegacy.state().enemies.filter(function(e){return e.type==="boss";}).length')==2
+        if index==0:ev('RDLegacy.state().players[1].hp=0')
+        finish_leg()
+        assert ev('RDLegacy.state().coopTour.completed')==index+1
+        if index<17:
+            assert ev('RDLegacy.state().overlay') and not ev('RDLegacy.state().done')
+            assert ev('RDLegacy.state().players[1].hp')>0
+            # Repeated completion cannot count the same encounter twice.
+            ev('RDLegacy.finish(true)');assert ev('RDLegacy.state().coopTour.completed')==index+1
+            tap('ВЫБРАТЬ')
+            assert ev('RDLegacy.state().modeTime')<.3
+    assert ev('RDLegacy.state().won')
+    assert ev('RDLegacy.state().coopTour.bosses')==7
+    assert ev('RDLegacy.state().coopTour.revives')==1
+    assert len(maps)==6 and len(modes)==6
+    assert ev('JSON.stringify(RDSave.data)')==before_tour
+    # Endless tour repeats with stronger bosses rather than stopping at 18.
+    launch(dict(mode='arena',team=['bugdan','glasses'],coop=True,coopTour='endless',reward='none'))
+    first_boss=None
+    for index in range(22):
+        if index==2:first_boss=ev('RDLegacy.state().enemies[0].maxhp')
+        if index==20:assert ev('RDLegacy.state().enemies[0].maxhp')>first_boss
+        finish_leg();assert not ev('RDLegacy.state().done');tap('ВЫБРАТЬ')
+    finish_leg();tap('ЗАВЕРШИТЬ ПОХОД')
+    assert ev('RDLegacy.state().won') and ev('RDLegacy.state().coopTour.completed')==23
+    assert ev('JSON.stringify(RDSave.data)')==before_tour
+    print('PASS: 18 cooperative stages, six maps and task types, seven bosses, partner revival, persistent perks, independent scene timers, endless scaling and voluntary finish.',flush=True)
     opening('contracts');ev('RDSave.data.progress.kills=50;RDUI.render()');before=ev('RDSave.data.crystals');tap('ЗАБРАТЬ 320 КРИСТ.');assert ev('RDSave.data.crystals')==before+320
     ev('RDLegacy.menu()');show('home')
     saved=ev('RDSave.data');page.reload();page.wait_for_function('!!window.RDUI');assert ev('RDSave.data')==saved

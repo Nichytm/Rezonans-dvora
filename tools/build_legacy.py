@@ -6,6 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'game'))
 model=runpy.run_path(str(ROOT/'game/model.py'));worlds=runpy.run_path(str(ROOT/'game/worlds.py'))
 audio=runpy.run_path(str(ROOT/'game/audio.py'));arena=runpy.run_path(str(ROOT/'game/arena_base.py'))
+coop=runpy.run_path(str(ROOT/'game/coop_content.py'))
 heroes=model['HEROES'];assets=ROOT/'legacy/assets';assets.mkdir(exist_ok=True)
 for key,hero in heroes.items():
     image=Image.open(ROOT/'game/assets/images'/hero['image']).convert('RGBA')
@@ -32,7 +33,8 @@ effects={p.stem:folder+'/'+p.name for folder in ('audio_v2','sfx') for p in (ROO
 data=dict(heroes=heroes,maps=worlds['MAPS'],modes=worlds['MODES'],bosses=worlds['BOSSES'],
     rarities=model['RARITIES'],basics=model['BASICS'],roles=model['ROLE'],relics=model['RELICS'],stages=model['STAGES'],
     contracts=model['CONTRACTS'],defaults=model['Profile']().data,perks=arena['PERKS'],
-    voiceLabels=audio['VOICE_LABELS'],defaultVoices=audio['DEFAULT_VOICES'],voiceFiles=voices,fxFiles=effects)
+    voiceLabels=audio['VOICE_LABELS'],defaultVoices=audio['DEFAULT_VOICES'],voiceFiles=voices,fxFiles=effects,
+    coopStages=coop['COOP_STAGES'])
 (ROOT/'legacy/data.js').write_text('var RD_DATA = '+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';\n')
 # Each release must replace old cached scripts on the board as one coherent set.
 index=ROOT/'legacy/index.html';html=index.read_text()

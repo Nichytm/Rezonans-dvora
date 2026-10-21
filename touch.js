@@ -9,7 +9,7 @@ if(['board','touch','keyboard'].includes(requestedMode))mode=requestedMode;
 let touch=mode!=='keyboard',board=mode==='board',active=false,commands=[];
 const state={move:[0,0],move1:[0,0],move2:[0,0],aim:[0,0],fire:false,hidden:false};
 let firing=new Set();
-window.rdRead=()=>{const value=JSON.stringify({...state,touch,board,commands,coopHeroes:[$('coop-hero-1').value,$('coop-hero-2').value]});commands=[];return value;};
+window.rdRead=()=>{const value=JSON.stringify({...state,touch,board,commands,coopHeroes:[$('coop-hero-1').value,$('coop-hero-2').value],coopTour:$('coop-tour').value});commands=[];return value;};
 window.rdLoad=()=>{try{return localStorage.getItem('rezonans-dvora-v4')||'';}catch{return '';}};
 window.rdSave=value=>{try{localStorage.setItem('rezonans-dvora-v4',value);}catch{$('storage-warning').hidden=false;}};
 window.rdState=(value,battle,training,paused=false,coop=false)=>{

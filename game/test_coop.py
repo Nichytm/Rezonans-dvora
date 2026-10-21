@@ -8,7 +8,7 @@ from model import Profile,HEROES
 
 class CoopTests(unittest.TestCase):
     def make(self,heroes=('bugdan','glasses')):
-        b=CoopBattle(Profile(),heroes);b.next_wave=9999;return b
+        b=CoopBattle(Profile(),heroes);b.next_wave=9999;b.spawn_queue=999;b.spawn_cd=999;return b
 
     def test_two_independent_sticks_and_single_world_clock(self):
         b=self.make();p1=b.player_position(0);p2=b.player_position(1)
@@ -74,7 +74,7 @@ class CoopTests(unittest.TestCase):
 
     def test_coop_challenge_does_not_change_solo_progression(self):
         b=self.make();before=copy.deepcopy(b.profile.data)
-        b.completed_waves=3;b.finish(True);b.finish(True)
+        b.end_tour();b.finish(True)
         self.assertTrue(b.won);self.assertEqual(b.profile.data,before)
 
     def test_healing_field_reaches_player_two_and_keeps_dead_player_down(self):
@@ -83,14 +83,62 @@ class CoopTests(unittest.TestCase):
         b.hp[b.team[0]]=0;b.players[0]['pos']=V(640,265);b._load(0);b.update(.1)
         self.assertEqual(b.hp[b.team[0]],0)
 
-    def test_shared_three_wave_victory(self):
-        b=self.make();b.next_wave=0
-        for _ in range(300):
-            for e in b.enemies[:]:b.hit(e,1000000,b.team[1])
-            if b.intermission:b.choose_perk(b.choices[0])
-            b.update(.1)
-            if b.done:break
-        self.assertTrue(b.won);self.assertEqual(b.completed_waves,3)
+    def complete_current_objective(self,b):
+        b.enemies=[];b.spawn_queue=0;b.last_mode_spawn=9999
+        if b.mode=='capture':
+            for z in b.beacons:z.update(value=100.,owned=True)
+        elif b.mode=='escort':b.cart_progress=1.
+        elif b.mode=='heist':
+            b.deposited=9;b.escape_timer=4.;b.players[1]['pos']=V(1130,490)
+        elif b.mode=='survival':b.mode_time=90.
+        b.update_objective(.01)
+
+    def test_full_eighteen_stage_campaign_and_final_two_bosses(self):
+        b=self.make();before=copy.deepcopy(b.profile.data);maps=set();modes=set()
+        for stage in range(18):
+            self.assertFalse(b.done);self.assertEqual(b.tour_completed,stage)
+            maps.add(b.map_key);modes.add(b.leg['mode'])
+            if stage==17:self.assertEqual(len([e for e in b.enemies if e.get('boss_id')]),2)
+            self.complete_current_objective(b)
+            if stage<17:
+                self.assertTrue(b.intermission);self.assertFalse(b.done)
+                b.choose_perk(b.choices[0])
+                self.assertEqual(b.mode_time,0.)
+        self.assertTrue(b.won);self.assertEqual(b.tour_completed,18);self.assertEqual(b.tour_bosses,7)
+        self.assertEqual(len(maps),6);self.assertEqual(len(modes),6);self.assertEqual(b.profile.data,before)
+
+    def test_endless_second_lap_scales_and_can_be_finished(self):
+        b=CoopBattle(Profile(),['bugdan','glasses'],tour='endless')
+        b.spawn(kind='slime');initial=b.enemies[-1]['maxhp']
+        for stage in range(19):
+            self.complete_current_objective(b)
+            self.assertFalse(b.done);b.choose_perk(b.choices[0])
+        b.spawn(kind='slime');self.assertGreater(b.enemies[-1]['maxhp'],initial)
+        self.assertEqual(b.tour_completed,19);b.end_tour();self.assertTrue(b.done);self.assertTrue(b.won)
+
+    def test_rest_revives_partner_keeps_identity_and_perks(self):
+        b=self.make();p2=b.team[1];b.hp[p2]=0;b.hp[b.team[0]]-=80
+        b.finish(True);b.finish(True)
+        self.assertEqual(b.tour_completed,1);self.assertEqual(b.tour_revives,1)
+        self.assertGreater(b.hp[p2],0);b.choose_perk('power' if 'power' in b.choices else b.choices[0])
+        self.assertEqual(b.team,['bugdan','glasses']);self.assertEqual(b.tour_completed,1)
+        self.assertEqual(len(b.perks),1);self.assertFalse(b.intermission)
+
+    def test_player_two_can_capture_escort_collect_deposit_and_escape(self):
+        b=self.make();b.tour_completed=1;b.next_leg();b.last_mode_spawn=99999
+        b.players[0]['pos']=V(60,195);b._load(0);b.players[1]['pos']=V(b.beacons[0]['pos'])
+        for _ in range(81):b.update_objective(.1)
+        self.assertTrue(b.beacons[0]['owned']);self.assertFalse(b.beacons[1]['owned'])
+        b.tour_completed=4;b.next_leg();b.last_mode_spawn=99999;b.players[0]['pos']=V(60,195);b._load(0)
+        b.players[1]['pos']=V(b.core_pos);b.update_objective(1.)
+        self.assertGreater(b.cart_progress,0)
+        b.tour_completed=10;b.next_leg();b.last_mode_spawn=99999;b.players[0]['pos']=V(60,195);b._load(0)
+        b.players[1]['pos']=V(b.loot[0]['pos']);b.loot[0]['cooldown']=0.;b.update_objective(.1)
+        self.assertEqual(b.carry,1)
+        b.players[1]['pos']=V(140,400);b.deposit_timer=1.2;b.update_objective(.1)
+        self.assertEqual(b.deposited,1)
+        b.deposited=9;b.players[1]['pos']=V(1130,490);b.escape_timer=4.;b.update_objective(.1)
+        self.assertTrue(b.intermission);self.assertEqual(b.tour_completed,11)
 
     def test_draw_both_heroes_and_repeat_coop(self):
         import tempfile
@@ -100,10 +148,21 @@ class CoopTests(unittest.TestCase):
             game=Game(Path(temp)/'save.json',True);game.start_coop(['white','glasses'])
             game.battle.command(1,'ultimate');game.draw()
             self.assertEqual(game.battle.active,0)
-            game.battle.finish(True);game.draw()
+            game.battle.end_tour();game.draw()
             callback=next(callback for rect,callback in game.ui.buttons if rect.collidepoint((600,580)))
             callback();self.assertTrue(game.battle.coop);self.assertEqual(game.battle.team,['white','glasses'])
             pg.quit()
+
+    def test_draw_every_cooperative_objective_and_transition(self):
+        import tempfile
+        from pathlib import Path
+        from game import Game
+        with tempfile.TemporaryDirectory() as temp:
+            game=Game(Path(temp)/'save.json',True);game.start_coop(['bugdan','glasses'])
+            for _ in range(18):
+                game.draw();self.complete_current_objective(game.battle);game.draw()
+                if game.battle.intermission:game.choose_perk(game.battle.choices[0])
+            self.assertTrue(game.battle.won);pg.quit()
 
     def test_cannot_choose_same_or_invalid_heroes(self):
         for heroes in [('bugdan','bugdan'),('unknown','white'),('bugdan',)]:

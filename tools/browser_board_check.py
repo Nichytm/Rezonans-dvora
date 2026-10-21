@@ -68,6 +68,34 @@ with sync_playwright() as p:
         assert panel['x']>=0 and panel['x']+panel['width']<=width+1
         for selector in ['#p1-stick','#p2-stick','[data-command="p1:skill"]','[data-command="p2:skill"]']:
             assert page.locator(selector).is_visible()
+    page.set_viewport_size({'width':1920,'height':1080});page.wait_for_timeout(150)
+    original=get('game.profile.data')
+    assert get('game.battle.tour')=='campaign'
+    for stage in range(18):
+        assert get('game.battle.tour_completed')==stage
+        if stage==17:assert get("len([e for e in game.battle.enemies if e.get('boss_id')])")==2
+        py('''b=game.battle
+b.enemies=[];b.spawn_queue=0;b.last_mode_spawn=9999
+if b.mode=='capture':
+    for z in b.beacons:z.update(value=100.,owned=True)
+elif b.mode=='escort':b.cart_progress=1.
+elif b.mode=='heist':b.deposited=9;b.escape_timer=4.;b.players[1]['pos']=__import__('pygame').Vector2(1130,490)
+elif b.mode=='survival':b.mode_time=90.
+b.update_objective(.01)''')
+        if stage<17:
+            assert get('game.battle.intermission')
+            tap(280,483)
+            assert not get('game.battle.intermission')
+    assert get('game.battle.won');assert get('game.battle.tour_bosses')==7
+    assert get('game.profile.data')==original
+    page.tap('#coop-change');page.select_option('#coop-tour','endless');page.tap('#coop-go')
+    page.wait_for_timeout(200);assert get('game.battle.tour')=='endless'
+    py("game.battle.tour_completed=17;game.battle.next_leg();game.battle.finish(True)")
+    assert not get('game.battle.done');assert get('game.battle.tour_completed')==18
+    tap(280,483);assert get('game.battle.map_key')=='park'
+    py('game.battle.finish(True)');tap(640,664)
+    assert get('game.battle.done');assert get('game.battle.won')
+    print('PASS: 18-stage campaign through real upgrade taps, final double boss, unchanged solo save, endless selector / second lap / finish.',flush=True)
     page.tap('#coop-exit');page.wait_for_timeout(200)
     assert get('game.page')=='home';assert page.locator('#coop-controls').is_hidden()
     assert not errors,errors

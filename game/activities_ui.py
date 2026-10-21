@@ -119,6 +119,13 @@ class ObjectiveArt:
 
     def draw_mode_hud(self,b):
         mode=getattr(b,'mode',None)
+        if getattr(b,'coop',False):
+            self.panel((24,20,342,70),(16,22,38),LINE,12)
+            self.text('БЕСКОНЕЧНЫЙ ПОХОД' if b.tour=='endless' else 'ВДВОЁМ · 18 ЭТАПОВ',42,33,11,CYAN,True)
+            self.text(b.leg['name'],42,54,21,WHITE,True,maxwidth=310)
+            self.panel((24,95,1030,44),(16,22,38),LINE,8)
+            self.text(b.objective_text(),41,116,15,CYAN,True,'midleft',maxwidth=993)
+            return
         if not mode:return
         self.panel((24,20,342,70),(16,22,38),LINE,12)
         self.text(MODES[mode]['tag'],42,33,11,MODES[mode]['color'],True)

@@ -71,9 +71,9 @@ class Game(Activities,Extras):
         self.stage=stage;self.battle=Battle(self.profile,stage,self.sound.play,endless,training);self.edit_checked=False;self.page='battle';self.modal=None
         self.paused=False;self.pressed.clear();self.sound.music('battle')
 
-    def start_coop(self,heroes):
+    def start_coop(self,heroes,tour='campaign'):
         from coop import start_coop
-        start_coop(self,heroes)
+        start_coop(self,heroes,tour)
 
     def claim(self,key):
         if self.profile.claim_contract(key):self.sound.play('rare');self.message('Контракт выполнен. Награда получена!')
@@ -263,8 +263,12 @@ class Game(Activities,Extras):
 
     def perk_overlay(self):
         b=self.battle;self.overlay();u=self.ui
-        u.text(f'ВОЛНА {b.completed_waves} ПРОЙДЕНА',640,115,34,CYAN,True,'center')
-        u.text('Выбери одно усиление. Оно действует до конца этого забега.',640,166,18,WHITE,False,'center')
+        u.text(f'ЭТАП {b.tour_completed} ПРОЙДЕН' if getattr(b,'coop',False) else f'ВОЛНА {b.completed_waves} ПРОЙДЕНА',640,115,34,CYAN,True,'center')
+        u.text('Напарник восстановлен. Усиление действует до конца похода.' if getattr(b,'coop',False) else 'Выбери одно усиление. Оно действует до конца этого забега.',640,166,18,WHITE,False,'center')
+        if getattr(b,'coop',False):
+            from coop_content import COOP_STAGES
+            leg=COOP_STAGES[b.tour_completed%len(COOP_STAGES)]
+            u.text('ДАЛЬШЕ: '+leg['name'],640,206,16,MUTED,False,'center')
         u.text('Живые герои восстановили 12% здоровья. Бой на паузе.',640,199,14,MUTED,False,'center')
         for i,key in enumerate(b.choices):
             name,desc,kind=PERKS[key];x=109+i*360;col=[CYAN,PURPLE,GOLD][i]
@@ -275,6 +279,7 @@ class Game(Activities,Extras):
             u.button((x+23,457,294,53),'ВЫБРАТЬ',lambda k=key:self.choose_perk(k),True)
         u.text('Усиления можно складывать. Комбинируй их со способностями отряда.',640,594,15,MUTED,False,'center')
         if b.endless:u.button((436,644,407,40),'ЗАВЕРШИТЬ ЗАБЕГ С НАГРАДАМИ',lambda:b.finish(True),small=True)
+        elif getattr(b,'tour',None)=='endless':u.button((436,644,407,40),'ЗАВЕРШИТЬ ПОХОД',b.end_tour,small=True)
 
     def battle_overlay(self):
         b=self.battle;u=self.ui
@@ -282,8 +287,8 @@ class Game(Activities,Extras):
             self.overlay();u.panel((350,119,580,501))
             u.text('ЗАДАЧА ВЫПОЛНЕНА' if b.mode and b.won else 'ПОПЫТКА ЗАВЕРШЕНА' if b.mode else 'ЗАБЕГ ЗАВЕРШЁН' if b.endless else 'РАЗЛОМ ЗАКРЫТ' if b.won else 'РАЗЛОМ ПОБЕДИЛ',640,151,34,CYAN if b.won else RED,True,'midtop')
             summary=f'Пройдено волн: {b.completed_waves}' if b.endless else f'Рейтинг: {b.stars} / 3  ·  '+('Отличная работа!' if b.won else 'Усиль отряд и попробуй ещё.')
-            if getattr(b,'coop',False):summary='СОВМЕСТНАЯ АРЕНА · '+('Вместе победили!' if b.won else 'Попробуйте ещё раз')
-            if b.mode:summary=MODES[b.mode]['name']+' · '+('Задача выполнена!' if b.won else 'Попробуй другую тактику.')
+            if getattr(b,'coop',False):summary=f'ЭТАПОВ: {b.tour_completed}'+(' / 18' if b.tour=='campaign' else '')+f' · БОССОВ: {b.tour_bosses}'
+            elif b.mode:summary=MODES[b.mode]['name']+' · '+('Задача выполнена!' if b.won else 'Попробуй другую тактику.')
             u.text(summary,640,207,17,MUTED,False,'midtop')
             u.text(f'{b.kills} монстров  ·  {int(b.elapsed)//60}:{int(b.elapsed)%60:02} в бою',640,247,16,WHITE,False,'midtop')
             if getattr(b,'coop',False):
@@ -299,7 +304,7 @@ class Game(Activities,Extras):
                 if result['first']:u.text('БОНУС ПЕРВОГО ПРОХОЖДЕНИЯ ПОЛУЧЕН',640,432,12,GOLD,True,'midtop')
                 if result['levels']:u.text('Уровень повышен: '+', '.join(HEROES[h]['name'] for h in result['levels']),640,457,13,CYAN,False,'midtop',maxwidth=490)
             u.button((389,508,501,47),'В ШТАБ РАЗЛОМОВ',self.leave_battle,True)
-            u.button((389,566,501,34),'ПОВТОРИТЬ БОЙ',lambda:self.start_coop(b.team) if getattr(b,'coop',False) else self.start_activity(b.mode,b.map_key,b.boss_choice,b.difficulty) if b.mode else self.start_battle(b.stage,b.endless),small=True)
+            u.button((389,566,501,34),'ПОВТОРИТЬ БОЙ',lambda:self.start_coop(b.team,b.tour) if getattr(b,'coop',False) else self.start_activity(b.mode,b.map_key,b.boss_choice,b.difficulty) if b.mode else self.start_battle(b.stage,b.endless),small=True)
         elif self.paused:
             self.overlay();u.panel((427,220,426,278));u.text('ПАУЗА',640,246,35,WHITE,True,'midtop')
             u.button((462,310,356,51),'ПРОДОЛЖИТЬ',lambda:setattr(self,'paused',False),True)

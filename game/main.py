@@ -16,7 +16,7 @@ KEYS={'dash':pg.K_SPACE,'skill':pg.K_q,'ultimate':pg.K_e,'reload':pg.K_r,
 def browser_input(game):
     state=json.loads(str(platform.window.rdRead()))
     for command in state['commands']:
-        if command=='coop_start':game.start_coop(state['coopHeroes'])
+        if command=='coop_start':game.start_coop(state['coopHeroes'],state.get('coopTour','campaign'))
         elif command=='coop_exit':game.leave_battle();game.navigate('home')
         if command in KEYS:pg.event.post(pg.event.Event(pg.KEYDOWN,key=KEYS[command],scancode=0))
     b=game.battle

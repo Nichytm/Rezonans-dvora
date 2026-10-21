@@ -1,0 +1,21 @@
+"""A shared itinerary for the Canvas and Python cooperative clients."""
+COOP_STAGES = [
+    dict(name='Собрать соседей', map='park', mode='arena'),
+    dict(name='Зажечь парк', map='park', mode='capture'),
+    dict(name='Хозяин болота', map='park', mode='duel', bosses=['bugdan']),
+    dict(name='Разгрузка вокзала', map='depot', mode='arena'),
+    dict(name='Посылка через пути', map='depot', mode='escort'),
+    dict(name='Разрез района', map='depot', mode='duel', bosses=['ilya']),
+    dict(name='Отключить охрану', map='lab', mode='arena', anchors=True),
+    dict(name='Запитать реактор', map='lab', mode='capture'),
+    dict(name='Сборщик хаоса', map='lab', mode='duel', bosses=['igor']),
+    dict(name='Расчистить берег', map='beach', mode='arena'),
+    dict(name='Кристаллы у воды', map='beach', mode='heist'),
+    dict(name='Король смайлеров', map='beach', mode='duel', bosses=['smiler']),
+    dict(name='Разбить лёд', map='frost', mode='arena', anchors=True),
+    dict(name='Пережить метель', map='frost', mode='survival'),
+    dict(name='Последний богатырь', map='frost', mode='duel', bosses=['egor']),
+    dict(name='Вернуть ночной рынок', map='market', mode='arena', anchors=True),
+    dict(name='Последняя доставка', map='market', mode='escort'),
+    dict(name='Весь двор против нас', map='market', mode='duel', bosses=['ilya', 'igor']),
+]

@@ -283,7 +283,7 @@ class UI(CombatArt,WorldArt,ThreatArt,ObjectiveArt):
         for text in b.texts:self.text(text['text'],text['pos'].x,text['pos'].y,25 if text['big'] else 17,text['color'],True,'center')
         self.panel((24,20,322,71),(16,22,38),LINE,12)
         self.text(('АРЕНА  /  ВОЛНА '+str(max(1,b.wave))) if b.endless else f'РАЗЛОМ {b.stage:02}  /  ВОЛНА {min(3,max(1,b.wave))} ИЗ 3',42,33,12,CYAN,True)
-        self.text('Совместная арена' if getattr(b,'coop',False) else 'Испытание героев' if b.training else 'Бесконечная арена' if b.endless else STAGES[b.stage-1][0],42,53,20,WHITE,True)
+        self.text('Совместный поход' if getattr(b,'coop',False) else 'Испытание героев' if b.training else 'Бесконечная арена' if b.endless else STAGES[b.stage-1][0],42,53,20,WHITE,True)
         task='Защити резонатор: '+str(int(100*b.core_hp/b.core_max))+'%' if b.objective=='defend' else f'Якоря разлома: {b.anchors_destroyed} / 3' if b.objective=='anchors' else 'Зачисти все волны'
         self.text(('Урон: '+str(int(b.total_damage))) if b.training else task,30,101,13,CYAN,True)
         if b.perks:self.text(f'Усилений: {len(b.perks)}  ·  Урон ×{b.power:.2f}',30,124,12,MUTED)

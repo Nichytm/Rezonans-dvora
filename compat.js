@@ -10,6 +10,6 @@
     var missingRuntime = typeof window.WebAssembly === 'undefined' || typeof window.Promise === 'undefined';
     if (oldAndroid || oldBrowser || missingRuntime || /[?&]engine=legacy(?:&|$)/.test(query)) {
         var two = /[?&]players=2(?:&|$)/.test(query);
-        window.location.replace('legacy/index.html?board=1&v=restored-menu' + (two ? '&players=2' : ''));
+        window.location.replace('legacy/index.html?board=1&v=coop-tour' + (two ? '&players=2' : ''));
     }
 }());
